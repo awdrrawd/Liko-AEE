@@ -1,5 +1,6 @@
 import bcAeeModSdk from '@/modsdk';
 import {runtime} from '@/core/runtime';
+import {beginCraftingColorSession, saveCraftingColorSession, type CraftingColorSession} from '@/core/craftingColor';
 import {getState} from '@/core/store';
 import {syncCurrentContext} from '@/core/context';
 import {getCanvasRect, getCurrentItem, getEditableParts, getLayerColor, getLayerDisplayName, getLayerGroupMembers, getOpacity} from '@/core/bc';
@@ -16,6 +17,7 @@ import {commitAppearancePickerFrame, drawAppearancePickerOutline, handleAppearan
 import {drawAboveGridIfNeeded} from '@/controllers/backgroundController';
 
 export function installItemColorHooks() {
+  let craftingColorSession: CraftingColorSession | null = null;
   installLayerDiagnostics();
 
   bcAeeModSdk.hookFunction('ItemColorDraw', 0, (args, next) => {
@@ -44,6 +46,7 @@ export function installItemColorHooks() {
   });
 
   bcAeeModSdk.hookFunction('ItemColorLoad', 0, (args, next) => {
+    craftingColorSession = beginCraftingColorSession(args[0], args[1]);
     runtime.itemColorChar = args[0];
     runtime.itemColorItem = args[1];
     runtime.itemColorDirty = false;
@@ -76,21 +79,31 @@ export function installItemColorHooks() {
 
   bcAeeModSdk.hookFunction('ItemColorFireExit', 0, (args, next) => {
     const dirtyChar = runtime.itemColorChar;
+    const isCraftingPreview = craftingColorSession !== null;
     let result;
     try {
+      // The native Craft colour listener saves only Color, then immediately
+      // rebuilds the preview. Commit native layering properties BEFORE it runs.
+      try {
+        saveCraftingColorSession(craftingColorSession, args[0] === true);
+      } catch (error: unknown) {
+        // A failed AEE write must not prevent BC from saving colour and exiting.
+        console.warn('[AEE] Failed to save Craft layering properties:', error);
+      }
       result = next(args);
     } catch (error: unknown) {
       console.warn('[AEE] ItemColorFireExit chain error (suppressed):',
         error instanceof Error ? error.message : String(error));
       result = undefined;
     } finally {
+      craftingColorSession = null;
       runtime.itemColorChar = null;
       runtime.itemColorItem = null;
       runtime.itemColorDirty = false;
       closeAeeBcColorPicker();
       updateAppearanceScreenState();
     }
-    if (args[0] === true && dirtyChar) {
+    if (args[0] === true && dirtyChar && !isCraftingPreview) {
       try {
         ChatRoomCharacterUpdate(dirtyChar);
       } catch {

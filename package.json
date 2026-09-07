@@ -1,7 +1,7 @@
 {
   "name": "bc-aee",
   "private": true,
-  "version": "0.9.3",
+  "version": "0.9.4",
   "type": "module",
   "scripts": {
     "predev": "node scripts/sync-version.mjs",
