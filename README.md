@@ -3,7 +3,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-0.9.3-purple.svg)
+![Version](https://img.shields.io/badge/version-0.9.4-purple.svg)
 ![License](https://img.shields.io/badge/License-Custom%20(Copyleft)-purple.svg)
 ![BondageClub](https://img.shields.io/badge/BondageClub-Compatible-pink.svg)
 

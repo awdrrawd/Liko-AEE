@@ -57,6 +57,8 @@ BC 同一畫面更新可能額外呼叫 `DrawCharacter`，卻沒有產生可捕�
 - `frame`／`layerFrame`：尚未提交的當前繪製資料。
 - `lastVisibleCaptures`：每個穿戴群組最後一次非透明圖片。懸停閃爍可能把當前 layer 畫成 `Alpha=0`，此快取讓外框仍可持續顯示。
 
+圖片歸屬優先使用渲染中的 `currentDrawLayerItem.Asset`，不以物品名稱或共用圖片 URL 合併同名槽位。部件 capture 只接受目前編輯的 Item；已知正在繪製其他 Item 時，不得退回檔名配對。缺少渲染身分時，檔名 fallback 只接受唯一 Asset，避免把同名物品猜成第一個槽位。`node scripts/test-picker-item-identity.mjs` 涵蓋同名、共用 URL、切換編輯槽位與模糊 fallback。
+
 `lastVisibleCaptures` 只能供目前仍穿戴的相同 Asset 使用。每次提交都會根據角色 `Appearance` 剔除已移除物品，使用前也再次比對目前群組的 Asset，避免脫下物品後留下外框。
 
 `CharacterLoadCanvas` 會讓目前 frame 失效，但詳細標籤的點擊框保留到下一次 overlay 繪製。這可避免畫面仍看得到標籤、點擊框卻被提前清除的短暫狀態。

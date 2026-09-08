@@ -105,15 +105,17 @@ export function captureAppearanceImage(source: unknown, x: number, y: number, op
   const character = pickerCharacter();
   if (!(inSupportedAppearanceMode() || layerCaptureEnabled()) || runtime.currentRenderChar !== character || typeof source !== 'string') return;
   const state = getState();
-  const sameTrackedAsset = runtime.currentDrawLayerItem?.Asset === state.item?.Asset;
-  const trackedLayerIndex = sameTrackedAsset
-    ? runtime.currentDrawLayerIndex
-    : null;
-  const layerIndex = trackedLayerIndex != null && trackedLayerIndex >= 0
-    ? trackedLayerIndex
-    : matchCurrentItemLayer(source, state.item);
-  const asset = matchAsset(source, character);
-  const order = asset ? appearanceImageOrder(asset, source, character) : (layerIndex >= 0 ? layerOrder(layerIndex, character) : -1);
+  const trackedItem = runtime.currentDrawLayerItem;
+  const asset = trackedItem?.Asset ?? matchAsset(source, character);
+  // Resolve ownership once, before assigning any image to an editor layer.
+  const isEditedItem = state.item && (trackedItem ? trackedItem === state.item : asset === state.item.Asset);
+  let layerIndex = -1;
+  if (isEditedItem) {
+    const trackedIndex = trackedItem ? runtime.currentDrawLayerIndex : null;
+    layerIndex = trackedIndex != null && trackedIndex >= 0
+      ? trackedIndex : matchCurrentItemLayer(source, state.item);
+  }
+  const order = asset ? appearanceImageOrder(asset, source, character) : -1;
   // Retain the legacy translation fallback and gizmo inputs. Picking and
   // outlines use final shader matrices populated during the scoped GL draw.
   const transform = options as (DrawOptions & {
@@ -724,13 +726,17 @@ function runtimeGroupHover(): AssetGroupName | null {
 }
 
 function matchAsset(url: string, character: Character | null = pickerCharacter()): Asset | null {
-  const file = url.slice(url.lastIndexOf('/') + 1).split(/[?#]/, 1)[0].replace(/\.png$/i, '');
-  let best: Asset | null = null;
+  const file = imageFileName(url);
+  const candidates = new Set<Asset>();
   for (const layer of character?.AppearanceLayers ?? []) {
     const asset = layer.Asset;
-    if (asset?.Name && file.startsWith(asset.Name) && (!best || asset.Name.length > best.Name.length)) best = asset;
+    if (asset?.Name && file.startsWith(asset.Name)) candidates.add(asset);
   }
-  return best;
+  // Shared textures (including copied slots) cannot identify their owner by
+  // filename. Without render context, only accept an unambiguous match.
+  const longest = Math.max(0, ...[...candidates].map(asset => asset.Name.length));
+  const best = [...candidates].filter(asset => asset.Name.length === longest);
+  return best.length === 1 ? best[0] : null;
 }
 
 function matchCurrentItemLayer(url: string, item: Item | null): number {
