@@ -66,7 +66,7 @@ const OUTLINE_SAMPLES = 20;
 const PICK_TOP = 115;
 
 export function appearancePickerEnabled(): boolean {
-  return settings.hoverOutlineColor.get() !== 'off' || settings.appearancePick.get() || layerPickerEnabled();
+  return settings.hoverOutlinePanel.get() || settings.appearancePick.get() || layerPickerEnabled();
 }
 
 function layerPickerEnabled(): boolean {
@@ -77,7 +77,7 @@ function layerPickerEnabled(): boolean {
 function layerCaptureEnabled(): boolean {
   const state = getState();
   return state.visible && !!state.item
-    && (state.layerPickerMode !== 'off' || settings.hoverOutlineColor.get() !== 'off'
+    && (state.layerPickerMode !== 'off' || settings.hoverOutlinePanel.get()
       || !!state.activeDrag || !!state.transformOverlay.mode || state.editTool === 'gizmo');
 }
 
@@ -277,15 +277,15 @@ export function drawAppearancePickerOutline() {
     const index = pickLayerAt(MouseX, MouseY)[0];
     if (index != null) drawLayerOutline(index);
   }
-  if (settings.hoverOutlineColor.get() !== 'off' && state.visible && state.item && !state.activeDrag && !state.transformOverlay.mode && state.editTool !== 'gizmo' && runtime.panelHoverLayerIdx !== null) {
+  if (settings.hoverOutlinePanel.get() && state.visible && state.item && !state.activeDrag && !state.transformOverlay.mode && state.editTool !== 'gizmo' && runtime.panelHoverLayerIdx !== null) {
     const indices = runtime.panelHoverLayerIdx === 'all'
       ? [...layerCaptures.keys()]
       : getLayerGroupMembers(state.item, Number.parseInt(runtime.panelHoverLayerIdx, 10));
     indices.forEach(index => drawLayerOutline(index));
   }
-  if (settings.hoverOutlineColor.get() === 'off' || !inSupportedAppearanceMode()) return;
-  const groupHover = findGroupHover();
-  const hit = hovered ?? groupHover;
+  if (!inSupportedAppearanceMode()) return;
+  const hit = (settings.appearancePick.get() ? hovered : null)
+    ?? (settings.hoverOutlinePanel.get() ? findGroupHover() : null);
   if (!hit) return;
   const list = captures.get(hit.asset) ?? lastVisibleCaptures.get(hit.group.Name)?.list;
   const map = canvasMap();
@@ -317,7 +317,7 @@ export function isLayerPickerLabelPoint(x = MouseX, y = MouseY): boolean {
 export function setLayerPanelHover(layerId: string | null): void {
   if (runtime.panelHoverLayerIdx === layerId) return;
   runtime.panelHoverLayerIdx = layerId;
-  if (settings.hoverOutlineColor.get() === 'off') return;
+  if (!settings.hoverOutlinePanel.get()) return;
   const character = pickerCharacter();
   if (character) CharacterLoadCanvas(character);
 }

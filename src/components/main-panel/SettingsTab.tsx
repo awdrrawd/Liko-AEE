@@ -23,6 +23,7 @@ export function SettingsTab() {
       <SettingRow label={t('settings-enable-copy-paste')} setting={settings.enableCopyPaste}/>
       <SettingRow label={t('settings-bc-wheel-scroll')} setting={settings.bcWheelScroll}/>
       <SettingRow label={t('settings-hover-item-highlight')} setting={settings.hoverHighlightChar}/>
+      <SettingRow label={t('settings-hover-panel-outline')} setting={settings.hoverOutlinePanel}/>
       <HoverOutlineSelect/>
       <SettingRow label={t('settings-hover-layer-highlight')} setting={settings.hoverHighlight}/>
       <SettingRow label={t('settings-hover-tryon')} setting={settings.hoverTryOn}

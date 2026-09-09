@@ -424,7 +424,9 @@ function handleHoverCharHighlight(isAppearance: boolean) {
     if (runtime.hoverCharGroup !== null) stopHoverCharHighlight();
     return;
   }
-  if (settings.hoverHighlightChar.get() && isAppearance && CharacterAppearanceMode === '') {
+  const flashEnabled = settings.hoverHighlightChar.get();
+  const outlineEnabled = settings.hoverOutlinePanel.get();
+  if ((flashEnabled || outlineEnabled) && isAppearance && CharacterAppearanceMode === '') {
     let hoveredGroup: AssetGroupName | null = null;
     const mouseX = MouseX;
     const mouseY = MouseY;
@@ -443,7 +445,7 @@ function handleHoverCharHighlight(isAppearance: boolean) {
     if (hoveredGroup !== runtime.hoverCharGroup) {
       stopHoverCharHighlight();
       runtime.hoverCharGroup = hoveredGroup;
-      if (hoveredGroup) startHoverCharHighlight(hoveredGroup);
+      if (hoveredGroup && flashEnabled) startHoverCharHighlight(hoveredGroup);
     }
   } else if (runtime.hoverCharGroup !== null) {
     stopHoverCharHighlight();

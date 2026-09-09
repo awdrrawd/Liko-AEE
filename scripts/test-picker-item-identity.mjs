@@ -15,7 +15,7 @@ const runtime = {currentRenderChar: character, currentDrawLayerIndex: 0};
 const dependencies = {
   '@/core/runtime': {runtime},
   '@/core/store': {getState: () => state},
-  '@/core/settings': {settings: {hoverOutlineColor: {get: () => 'theme'}, appearancePick: {get: () => true}}},
+  '@/core/settings': {settings: {hoverOutlinePanel: {get: () => true}, appearancePick: {get: () => true}}},
   '@/core/bc': {getCurrentCharacter: () => character},
 };
 const exports = {};

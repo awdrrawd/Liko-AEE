@@ -24,7 +24,7 @@ function load(file, dependencies, extra = '') {
 const picker = load('src/controllers/appearancePickerController.ts', {
   '@/core/runtime': {runtime}, '@/core/store': {getState: () => state},
   '@/core/bc': {getCurrentCharacter: () => character},
-  '@/core/settings': {settings: {hoverOutlineColor: {get: () => 'off'}, appearancePick: {get: () => false}}},
+  '@/core/settings': {settings: {hoverOutlinePanel: {get: () => false}, appearancePick: {get: () => false}}},
 }, '\nexport function capturedDraw() { return frameDrawAt; }\nexport function resetDraw() { frameDrawAt = null; }');
 const appearance = load('src/hooks/appearanceHooks.ts', {
   '@/modsdk': {default: {hookFunction: (name, priority, fn) => hooks.set(name, fn)}},

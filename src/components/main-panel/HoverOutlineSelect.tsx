@@ -14,7 +14,6 @@ export function HoverOutlineSelect() {
     <span className="min-w-0 text-xs text-zinc-300">{t('settings-hover-outline')}</span>
     <div className="flex min-w-0 max-w-[65%] items-center gap-2">
       <Select value={value} ariaLabel={t('settings-hover-outline')} onValueChange={next => settings.hoverOutlineColor.set(next as HoverOutlineColor)}>
-        <option value="off">{t('setting-row-state-off')}</option>
         <option value="theme" data-color={readUiTheme().accent}>{t('settings-hover-outline-theme')}</option>
         {THEME_PRESETS.filter(preset => QUICK_PRESETS.has(preset.id)).map(preset =>
           <option key={preset.id} value={preset.id} data-color={preset.accent}>{t(preset.name)}</option>)}

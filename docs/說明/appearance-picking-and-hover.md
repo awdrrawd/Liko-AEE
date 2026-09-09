@@ -108,6 +108,8 @@ BC 同一畫面更新可能額外呼叫 `DrawCharacter`，卻沒有產生可捕�
 
 整件服裝列表的懸停使用另一組 `hoverChar*` runtime 狀態，因為它以 AssetGroup 為單位，不是正在編輯物品中的 layer id。
 
+右側面板的懸停外框由 `hoverOutlinePanel` 獨立控制，閃爍由 `hoverHighlightChar` 控制；任一啟用時追蹤 `hoverCharGroup`，只有閃爍啟用才啟動 opacity 動畫。拾取外框由拾取功能控制，不受面板外框開關影響。`hoverOutlineColor` 只決定共用顏色，預設跟隨主題，不含「關閉」。舊版 off 遷移為主題色且面板外框關閉，既有選色則保留並啟用面板外框。切換閃爍設定時重新判定目前列，避免游標未移動時無法啟動動畫。`node scripts/test-panel-hover-outline.mjs` 驗證四種開關組合與懸停目標清除。
+
 ## 已知限制與後續風險
 
 1. 2026-09-02 起，GLDrawImage 的 capture 會收集最終 shader matrix，包含 AEE skew／flip 與 mirror-copy 的額外繪製。像素點擊反算至原圖 alpha mask；外框與詳細標籤使用相同矩陣。自動回歸通過，使用者已確認遊戲內修復。

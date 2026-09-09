@@ -8,6 +8,7 @@ import {
   ensureLayerOverrides,
   ensureOpacityArray,
   getAssetBaseXY,
+  getCurrentCharacter,
   getCurrentItem,
   getLayerColor,
   getLayerGroupMembers,
@@ -598,8 +599,16 @@ export function installSettingEffects() {
   settings.hoverHighlight.onChange(enabled => {
     if (!enabled) stopHoverHighlight(true);
   });
-  settings.hoverHighlightChar.onChange(enabled => {
-    if (!enabled) stopHoverCharHighlight();
+  settings.hoverHighlightChar.onChange(() => {
+    // Re-evaluate the current row even when flashing is enabled while an
+    // outline-only hover already owns the group.
+    stopHoverCharHighlight();
+  });
+  settings.hoverOutlinePanel.onChange(enabled => {
+    // Capture geometry immediately when outlines are enabled after the
+    // character canvas was already built with all picking features disabled.
+    const character = getCurrentCharacter();
+    if (enabled && character) CharacterLoadCanvas(character);
   });
   settings.hoverTryOn.onChange(enabled => {
     if (!enabled) stopHoverTryOn();

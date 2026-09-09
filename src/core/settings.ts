@@ -9,13 +9,19 @@ export interface CtrlPos {
   top: number;
 }
 
-export type HoverOutlineColor = 'off' | 'theme' | 'gold' | 'sapphire' | 'emerald' | 'rose' | 'amethyst' | 'iris' | 'crimson' | 'cyan' | 'custom';
+export type HoverOutlineColor = 'theme' | 'gold' | 'sapphire' | 'emerald' | 'rose' | 'amethyst' | 'iris' | 'crimson' | 'cyan' | 'custom';
 
 class SettingsStore {
   private values: Record<string, unknown>;
 
   constructor(private readonly storageKey: string) {
     this.values = SettingsStore.load(storageKey);
+    // Split the legacy color/enable setting without changing existing hover preferences.
+    const legacyColor = this.values.hoverOutlineColor;
+    if (this.values.hoverOutlinePanel == null && legacyColor != null) {
+      this.values.hoverOutlinePanel = legacyColor !== 'off';
+    }
+    if (legacyColor === 'off') this.values.hoverOutlineColor = 'theme';
   }
 
   private static load(storageKey: string): Record<string, unknown> {
@@ -96,7 +102,8 @@ export const settings = {
   rightClickExitDrag: bool('rightClickExitDrag', false),
   hoverHighlight: bool('hoverHighlight', false),
   hoverHighlightChar: bool('hoverHighlightChar', false),
-  hoverOutlineColor: value<HoverOutlineColor>('hoverOutlineColor', 'off'),
+  hoverOutlinePanel: bool('hoverOutlinePanel', false),
+  hoverOutlineColor: value<HoverOutlineColor>('hoverOutlineColor', 'theme'),
   hoverOutlineCustomColor: value('hoverOutlineCustomColor', '#a78bfa'),
   appearancePick: bool('appearancePick', false),
   layerPickerMode: value<LayerPickerMode>('layerPickerMode', 'off'),
