@@ -81,11 +81,6 @@ function restoreInlineStyles(element: HTMLElement, snapshot: BcHgroupStyleSnapsh
   });
 }
 
-function getBcColorPickerHgroup() {
-  return (document.getElementById('color-picker-hgroup')
-    ?? document.getElementById('color-picker-h1')?.closest('hgroup')
-    ?? document.getElementById('color-picker-h1')?.parentElement) as HTMLElement | null;
-}
 
 export function ColorPickerPanel({state}: { state: AeeState }) {
   const picker = state.colorPicker;
@@ -121,30 +116,7 @@ export function ColorPickerPanel({state}: { state: AeeState }) {
     && hsv.v === initialHsvRef.current.v
     && alpha === initialAlphaRef.current;
   const rect = state.canvasRect;
-  const [verticalBounds, setVerticalBounds] = useState<{left: number; top: number; width: number; bottom: number; headingTop: number} | null>(null);
-  useEffect(() => {
-    if (!picker.bcMode) { setVerticalBounds(null); return; }
-    let frame = 0;
-    const update = () => {
-      const api = (window as unknown as {Liko?: {LCE?: {Vertical?: {getState(): {
-        mode: string | null; dialogRect: {left: number; top: number; width: number; height: number} | null;
-      }}}}}).Liko?.LCE?.Vertical;
-      const state = api?.getState();
-      const area = state?.mode === 'dialog' ? state.dialogRect : null;
-      const menu = document.getElementById('color-picker-menu')?.getBoundingClientRect();
-      const heading = getBcColorPickerHgroup()?.getBoundingClientRect();
-      const next = area ? {
-        left: area.left + 24, width: Math.max(1, area.width - 32),
-        headingTop: Math.max(area.top, menu?.bottom ?? area.top) + BC_HEADING_GAP,
-        top: Math.max(area.top, menu?.bottom ?? area.top) + (heading?.height ?? 30) + BC_HEADING_GAP * 2,
-        bottom: Math.min(window.innerHeight, area.top + area.height),
-      } : null;
-      setVerticalBounds(old => JSON.stringify(old) === JSON.stringify(next) ? old : next);
-      frame = requestAnimationFrame(update);
-    };
-    update();
-    return () => cancelAnimationFrame(frame);
-  }, [picker.bcMode]);
+  const verticalBounds = useVerticalPickerBounds(picker.bcMode);
   const defaultLeft = rect ? rect.left + rect.width * 0.65 : window.innerWidth * 0.65;
   const defaultTop = rect ? rect.top + rect.height * 0.2 : window.innerHeight * 0.2;
 
@@ -604,3 +576,4 @@ export function ColorPickerPanel({state}: { state: AeeState }) {
       aria-label={t('color-picker-panel-title')}/>
   </>;
 }
+import {getBcColorPickerHgroup, useVerticalPickerBounds} from './useVerticalPickerBounds';
