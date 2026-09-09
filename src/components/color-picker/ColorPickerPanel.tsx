@@ -97,7 +97,7 @@ export function ColorPickerPanel({state}: { state: AeeState }) {
   const [alpha, setAlpha] = useState(Math.round(picker.opacityPct / 100 * 255));
   const [rule, setRule] = useState('complementary');
   const [recent, setRecent] = useState<(SavedColor | null)[]>(loadRecentColors);
-  const [cardSize, setCardSize] = useState<{ w: number; h: number } | null>(null);
+  const [naturalHeight, setNaturalHeight] = useState(750);
   const previewOnlyRef = useRef(false);
   const lastAppliedColorRef = useRef<{ hex: string; opacityPct: number; preview: boolean } | null>(null);
 
@@ -116,19 +116,27 @@ export function ColorPickerPanel({state}: { state: AeeState }) {
     && hsv.v === initialHsvRef.current.v
     && alpha === initialAlphaRef.current;
   const rect = state.canvasRect;
-  const verticalBounds = useVerticalPickerBounds(picker.bcMode);
+  const verticalBounds = usePickerMapping(picker.bcMode);
   const defaultLeft = rect ? rect.left + rect.width * 0.65 : window.innerWidth * 0.65;
   const defaultTop = rect ? rect.top + rect.height * 0.2 : window.innerHeight * 0.2;
 
   const availableWidth = verticalBounds?.width ?? Math.max(1, (rect?.right ?? window.innerWidth) - defaultLeft);
-  const scale = availableWidth / 750;
   const top = verticalBounds?.top ?? picker.top ?? defaultTop;
+  const availableHeight = verticalBounds ? Math.max(1, verticalBounds.bottom - top) : null;
+  // Fit the natural panel in both dimensions of the split viewport. Measuring
+  // unzoomed layout height avoids feeding the scaled size back into the scale.
+  const scale = availableHeight === null ? availableWidth / 750
+    : Math.min(1, availableWidth / 750, availableHeight / naturalHeight);
   const toggleW = 24;
-  const fw = cardSize?.w ?? 750 * scale;
-  const fh = cardSize?.h ?? 0;
+  const fw = 750 * scale;
+  const fh = naturalHeight * scale;
   const collapsed = picker.bcMode && picker.collapsed;
   const dockRight = verticalBounds ? verticalBounds.left + verticalBounds.width : rect?.right ?? window.innerWidth;
-  const left = verticalBounds?.left ?? picker.left ?? defaultLeft;
+  const left = verticalBounds ? dockRight - fw : picker.left ?? defaultLeft;
+  const panelLeft = verticalBounds ? left : left - toggleW;
+  // Move the whole wrapper (including its toggle and shadow) beyond the actual
+  // viewport edge, even when a saved position or a smaller scale leaves a gap.
+  const collapsedOffset = Math.max(0, window.innerWidth - panelLeft) + 16;
 
   const eyedropping = picker.eyedropperActive;
   const dimStyle = {
@@ -182,16 +190,17 @@ export function ColorPickerPanel({state}: { state: AeeState }) {
 
   useLayoutEffect(() => {
     const el = cardRef.current;
-    if (!el) return;
+    if (!el || !verticalBounds) return;
     const measure = () => {
-      const r = el.getBoundingClientRect();
-      if (r.width && r.height) setCardSize({w: r.width, h: r.height});
+      // CSS transform does not affect layout dimensions. Never feed zoomed or
+      // constrained viewport height back into the natural-height measurement.
+      if (el.offsetHeight > 0) setNaturalHeight(el.offsetHeight);
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [scale, picker.bcMode]);
+  }, [!!verticalBounds]);
 
   useLayoutEffect(() => {
     if (!picker.bcMode) {
@@ -213,7 +222,7 @@ export function ColorPickerPanel({state}: { state: AeeState }) {
     }
 
     const maxWidth = Math.max(0, window.innerWidth - BC_HEADING_VIEWPORT_MARGIN * 2);
-    const headingWidth = Math.min(maxWidth, fw);
+    const headingWidth = Math.min(maxWidth, verticalBounds?.width ?? fw);
     const minCenter = headingWidth / 2 + BC_HEADING_VIEWPORT_MARGIN;
     const maxCenter = window.innerWidth - headingWidth / 2 - BC_HEADING_VIEWPORT_MARGIN;
     const centerX = minCenter <= maxCenter ? clamp(left + fw / 2, minCenter, maxCenter) : window.innerWidth / 2;
@@ -370,11 +379,13 @@ export function ColorPickerPanel({state}: { state: AeeState }) {
     if (label === 'A') setAlpha(Math.round(clamp(value, 0, 100) / 100 * 255));
   };
 
-  const panelHeight = verticalBounds ? Math.max(1, verticalBounds.bottom - top) / scale
+  const panelHeight = verticalBounds ? undefined
     : rect ? Math.max(1, rect.bottom - top) * 0.97 / scale : undefined;
   const cardEl = (
-    <div ref={cardRef} style={{zoom: scale}}>
-      <Panel className="aee-scroll w-[750px] justify-between gap-3 overflow-y-auto p-4 text-lg" style={{height: panelHeight, borderWidth: '2px'}}>
+    <div ref={cardRef} style={verticalBounds
+      ? {width: 750, flexShrink: 0, transform: `scale(${scale})`, transformOrigin: 'top left'}
+      : {zoom: scale, width: 750, flexShrink: 0}}>
+      <Panel className="aee-scroll w-[750px] justify-between gap-3 overflow-y-auto p-4 text-lg" style={{width: 750, minWidth: 0, boxSizing: 'border-box', height: panelHeight, borderWidth: '2px'}}>
         <div className="flex items-start gap-3">
           <div className="flex shrink-0 flex-col gap-2 pt-1">
             <ToolButton title={t('color-picker-tool-copy-title')}
@@ -560,12 +571,12 @@ export function ColorPickerPanel({state}: { state: AeeState }) {
   return <>
     {eyedropperLayer}
     <div className="pointer-events-none fixed z-[999999]"
-         style={{top, left: left - toggleW, width: toggleW + fw, transform: collapsed ? `translateX(${fw + toggleW}px)` : 'translateX(0)', opacity: dimStyle.opacity, pointerEvents: dimStyle.pointerEvents, transition: 'transform .35s ease-in-out, opacity .15s ease'}}>
+         style={{top, left: panelLeft, width: verticalBounds ? fw : toggleW + fw, transform: collapsed ? `translateX(${collapsedOffset}px)` : 'translateX(0)', opacity: dimStyle.opacity, pointerEvents: dimStyle.pointerEvents, transition: 'transform .35s ease-in-out, opacity .15s ease'}}>
       <div className="flex items-center">
-        <IconButton className="pointer-events-auto h-12 w-6 rounded-l-md rounded-r-none border-r-0"
+        <IconButton className={`pointer-events-auto h-12 w-6 rounded-l-md rounded-r-none border-r-0 ${verticalBounds ? 'absolute right-0 top-0 z-10' : 'shrink-0'}`}
                     icon={<ChevronRight className="h-4 w-4"/>} aria-label={t('color-picker-panel-title')}
                     onClick={() => setColorPickerCollapsed(true)}/>
-        <div className="pointer-events-auto" style={verticalBounds ? {maxHeight: Math.max(1, verticalBounds.bottom - top), overflowY: 'auto', overflowX: 'hidden'} : undefined}>{cardEl}</div>
+        <div className="pointer-events-auto shrink-0" style={verticalBounds ? {width: fw, height: fh, overflow: 'hidden'} : undefined}>{cardEl}</div>
       </div>
     </div>
     <button type="button"
@@ -576,4 +587,4 @@ export function ColorPickerPanel({state}: { state: AeeState }) {
       aria-label={t('color-picker-panel-title')}/>
   </>;
 }
-import {getBcColorPickerHgroup, useVerticalPickerBounds} from './useVerticalPickerBounds';
+import {getBcColorPickerHgroup, usePickerMapping} from './pickerMapping';
