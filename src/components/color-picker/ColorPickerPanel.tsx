@@ -121,18 +121,42 @@ export function ColorPickerPanel({state}: { state: AeeState }) {
     && hsv.v === initialHsvRef.current.v
     && alpha === initialAlphaRef.current;
   const rect = state.canvasRect;
+  const [verticalBounds, setVerticalBounds] = useState<{left: number; top: number; width: number; bottom: number; headingTop: number} | null>(null);
+  useEffect(() => {
+    if (!picker.bcMode) { setVerticalBounds(null); return; }
+    let frame = 0;
+    const update = () => {
+      const api = (window as unknown as {Liko?: {LCE?: {Vertical?: {getState(): {
+        mode: string | null; dialogRect: {left: number; top: number; width: number; height: number} | null;
+      }}}}}).Liko?.LCE?.Vertical;
+      const state = api?.getState();
+      const area = state?.mode === 'dialog' ? state.dialogRect : null;
+      const menu = document.getElementById('color-picker-menu')?.getBoundingClientRect();
+      const heading = getBcColorPickerHgroup()?.getBoundingClientRect();
+      const next = area ? {
+        left: area.left + 24, width: Math.max(1, area.width - 32),
+        headingTop: Math.max(area.top, menu?.bottom ?? area.top) + BC_HEADING_GAP,
+        top: Math.max(area.top, menu?.bottom ?? area.top) + (heading?.height ?? 30) + BC_HEADING_GAP * 2,
+        bottom: Math.min(window.innerHeight, area.top + area.height),
+      } : null;
+      setVerticalBounds(old => JSON.stringify(old) === JSON.stringify(next) ? old : next);
+      frame = requestAnimationFrame(update);
+    };
+    update();
+    return () => cancelAnimationFrame(frame);
+  }, [picker.bcMode]);
   const defaultLeft = rect ? rect.left + rect.width * 0.65 : window.innerWidth * 0.65;
   const defaultTop = rect ? rect.top + rect.height * 0.2 : window.innerHeight * 0.2;
 
-  const availableWidth = Math.max(1, (rect?.right ?? window.innerWidth) - defaultLeft);
+  const availableWidth = verticalBounds?.width ?? Math.max(1, (rect?.right ?? window.innerWidth) - defaultLeft);
   const scale = availableWidth / 750;
-  const top = picker.top ?? defaultTop;
+  const top = verticalBounds?.top ?? picker.top ?? defaultTop;
   const toggleW = 24;
   const fw = cardSize?.w ?? 750 * scale;
   const fh = cardSize?.h ?? 0;
   const collapsed = picker.bcMode && picker.collapsed;
-  const dockRight = rect?.right ?? window.innerWidth;
-  const left = picker.left ?? defaultLeft;
+  const dockRight = verticalBounds ? verticalBounds.left + verticalBounds.width : rect?.right ?? window.innerWidth;
+  const left = verticalBounds?.left ?? picker.left ?? defaultLeft;
 
   const eyedropping = picker.eyedropperActive;
   const dimStyle = {
@@ -245,7 +269,11 @@ export function ColorPickerPanel({state}: { state: AeeState }) {
 
     const hgroupHeight = hgroup.getBoundingClientRect().height || 0;
     hgroup.style.top = `${Math.max(hgroupHeight, top - BC_HEADING_GAP)}px`;
-  }, [picker.bcMode, collapsed, left, top, fw]);
+    if (verticalBounds) {
+      hgroup.style.transform = 'translateX(-50%)';
+      hgroup.style.top = `${verticalBounds.headingTop}px`;
+    }
+  }, [picker.bcMode, collapsed, left, top, fw, verticalBounds]);
 
   useEffect(() => {
     return () => {
@@ -370,7 +398,8 @@ export function ColorPickerPanel({state}: { state: AeeState }) {
     if (label === 'A') setAlpha(Math.round(clamp(value, 0, 100) / 100 * 255));
   };
 
-  const panelHeight = rect ? Math.max(1, rect.bottom - top) * 0.97 / scale : undefined;
+  const panelHeight = verticalBounds ? Math.max(1, verticalBounds.bottom - top) / scale
+    : rect ? Math.max(1, rect.bottom - top) * 0.97 / scale : undefined;
   const cardEl = (
     <div ref={cardRef} style={{zoom: scale}}>
       <Panel className="aee-scroll w-[750px] justify-between gap-3 overflow-y-auto p-4 text-lg" style={{height: panelHeight, borderWidth: '2px'}}>
@@ -564,7 +593,7 @@ export function ColorPickerPanel({state}: { state: AeeState }) {
         <IconButton className="pointer-events-auto h-12 w-6 rounded-l-md rounded-r-none border-r-0"
                     icon={<ChevronRight className="h-4 w-4"/>} aria-label={t('color-picker-panel-title')}
                     onClick={() => setColorPickerCollapsed(true)}/>
-        <div className="pointer-events-auto">{cardEl}</div>
+        <div className="pointer-events-auto" style={verticalBounds ? {maxHeight: Math.max(1, verticalBounds.bottom - top), overflowY: 'auto', overflowX: 'hidden'} : undefined}>{cardEl}</div>
       </div>
     </div>
     <button type="button"
